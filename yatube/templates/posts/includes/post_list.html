@@ -13,3 +13,7 @@
       {% endthumbnail %}
       <p>{{ post.text|linebreaksbr }}</p>
       <a href="{% url 'posts:post_detail' post.id %}">Подробная информация </a><br>
+      {% if post.group %}
+        Группа: <a href="{% url 'posts:group_list' post.group.slug %}"> {{post.group.title}} </a>
+      {% endif %}
+      {% if not forloop.last %}<hr>{% endif %}

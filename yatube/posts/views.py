@@ -83,23 +83,18 @@ def post_edit(request, post_id):
 def add_comment(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     form = CommentForm(request.POST or None)
-    if not form.is_valid():
-        return render(request, 'posts/post_detail.html', {
-            form: 'form',
-            post: 'post',
-        })
-    comment = form.save(commit=False)
-    comment.author = request.user
-    comment.post = post
-    comment.save()
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.author = request.user
+        comment.post = post
+        comment.save()
     return redirect('posts:post_detail', post_id=post_id)
 
 
 @login_required
 def follow_index(request):
-    authors = request.user.follower.values_list('author', flat=True)
     page_obj = paginator_view(request, Post.objects.filter(
-        author__id__in=authors
+        author__following__user=request.user
     ))
     return render(request, 'posts/follow.html', {
         'page_obj': page_obj,
