@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% load thumbnail %}
-{% block title %}{{ author|linebreaksbr }} Профайл пользователя{% endblock %}
+{% block title %}{{ author.username}} Профайл пользователя{% endblock %}
 {% block content %}
   <div class="container">
     <h1>Все посты пользователя {{ author.username }}</h1>
-    <h3>Всего постов: {{ author.posts.count }}</h3>
-    {% if user != author %}
+    <h3>Всего постов: {{ author.posts.count }}</h3>   {# todo - будет время, сделай хоть какой дизайн#}
+    <h3>Подписчиков: {{ author.follower.count }}</h3>
+    <h3>Подписан: {{ author.following.count }}</h3>
+    {% if user.is_authenticated %}
       {% if following %}
         <a
           class="btn btn-lg btn-light"
@@ -22,10 +24,7 @@
       {% endif %}
     {% endif %}
     {% for post in page_obj %}
-      {% include 'posts/includes/post_list.html' %}
-      {% if post.group.slug %}
-        <p>Группа: <a href="{% url 'posts:group_list' post.group.slug %}"> {{ post.group.title }} </a></p>
-      {% endif %}
+      {% include 'posts/includes/card_post.html' %}
       {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}
     {% include 'posts/includes/paginator.html' %}

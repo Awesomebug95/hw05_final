@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
 
 User = get_user_model()
@@ -35,7 +36,7 @@ class Post(models.Model):
     )
     image = models.ImageField(
         'Картинка',
-        upload_to='posts/',
+        upload_to=f'{settings.POST_UPLOAD}/',
         blank=True
     )
     author = models.ForeignKey(
@@ -55,11 +56,12 @@ class Post(models.Model):
 
 
 class Comment(models.Model):
-    post = models.ForeignKey(Post,
-                             on_delete=models.CASCADE,
-                             related_name='comments',
-                             verbose_name='Автор',
-                             )
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Автор',
+    )
     author = models.ForeignKey(User,
                                on_delete=models.CASCADE,
                                related_name='comments',
@@ -71,10 +73,10 @@ class Comment(models.Model):
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ['-id']
+        ordering = ['-created']
 
     def __str__(self) -> str:
-        return self.text[:15]
+        return f'Пост: {self.post}, автор: {self.author}'
 
 
 class Follow(models.Model):
@@ -84,10 +86,6 @@ class Follow(models.Model):
     author = models.ForeignKey(User, models.CASCADE,
                                related_name="following",
                                verbose_name='Автор')
-
-    class Meta:
-        models.UniqueConstraint = (
-            ['user', 'author'], '%(app_label)s_%(class)s_is_adult')
 
     def __str__(self) -> str:
         return f'{self.user.username}-->{self.author.username}'

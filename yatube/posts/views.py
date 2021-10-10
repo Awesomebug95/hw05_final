@@ -30,11 +30,12 @@ def group_posts(request, slug):
 
 
 def profile(request, username):
-    user = get_object_or_404(User, username=username)
-    following = request.user.is_authenticated and user.following.exists()
+    author = get_object_or_404(User, username=username)
+    following = (request.user.is_authenticated
+                 and author.following.filter(user=request.user).exists())
     return render(request, "posts/profile.html", {
-        "author": user,
-        "page_obj": paginator_view(request, user.posts.all()),
+        "author": author,
+        "page_obj": paginator_view(request, author.posts.all()),
         'following': following,
     })
 
@@ -51,7 +52,7 @@ def post_detail(request, post_id):
 
 @login_required
 def post_create(request):
-    form = PostForm(request.POST or None)
+    form = PostForm(request.POST or None, files=request.FILES or None)
     if not form.is_valid():
         return render(request, "posts/create_post.html", {"form": form})
     form.instance.author = request.user
@@ -112,6 +113,9 @@ def profile_follow(request, username):
 
 @login_required
 def profile_unfollow(request, username):
-    user = request.user
-    Follow.objects.get(user=user, author__username=username).delete()
-    return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+    get_object_or_404(
+        Follow,
+        user=request.user,
+        author__username=username
+    ).delete()
+    return redirect('posts:profile', username=username)
