@@ -1,6 +1,7 @@
 import shutil
 import tempfile
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -23,14 +24,32 @@ TITLE2 = 'Тестовый заголовок2'
 TITLE3 = 'Тестовый заголовок3'
 USERNAME = 'User'
 USERNAME2 = 'User2'
+USERNAME3 = 'author'
 
 HOME_URL = reverse('posts:index')
 CREATE_URL = reverse('posts:post_create')
+FOLLOW_INDEX_URL = reverse('posts:follow_index')
 GROUP_URL = reverse('posts:group_list', args=[SLUG])
 GROUP_URL2 = reverse('posts:group_list', args=[SLUG2])
 GROUP_URL3 = reverse('posts:group_list', args=[SLUG3])
 PROFILE_URL = reverse('posts:profile', args=[USERNAME])
 PROFILE_URL2 = reverse('posts:profile', args=[USERNAME2])
+PROFILE_FOLLOW_URL = reverse('posts:profile_follow',
+                             args=[USERNAME3])
+PROFILE_UNFOLLOW_URL = reverse('posts:profile_unfollow',
+                               args=[USERNAME3])
+
+SMALL_GIF = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
+             b'\x01\x00\x80\x00\x00\x00\x00\x00'
+             b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+             b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+             b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+             b'\x0A\x00\x3B')
+uploaded = SimpleUploadedFile(
+    name='small.gif',
+    content=SMALL_GIF,
+    content_type='image/gif'
+)
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
@@ -55,40 +74,36 @@ class PostsPagesTests(TestCase):
         )
         cls.user = User.objects.create_user(username=USERNAME)
         cls.user2 = User.objects.create_user(username=USERNAME2)
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(cls.user)
+        cls.author = User.objects.create_user(username=USERNAME3)
+        cls.not_author = User.objects.create_user(username='not_author')
+        cls.auth_client_not_author = Client()
+        cls.auth_client_not_author.force_login(cls.not_author)
+        cls.auth_client_author = Client()
+        cls.auth_client_author.force_login(cls.author)
         cls.post = Post.objects.create(
-            author=cls.user,
+            author=cls.user2,
             group=cls.group,
-            text=TEXT
+            text=TEXT,
+            image=uploaded,
         )
+        Follow.objects.create(user=cls.user, author=cls.user2)
         cls.POST_URL = reverse('posts:post_detail', args=[cls.post.pk])
-        cls.EDIT_URL = reverse('posts:post_edit', args=[cls.post.pk])
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
-    def setUp(self):
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
-        self.author = User.objects.create_user(username='author')
-        self.not_author = User.objects.create_user(username='not_author')
-        self.auth_client_not_author = Client()
-        self.auth_client_not_author.force_login(self.not_author)
-        self.auth_client_author = Client()
-        self.auth_client_author.force_login(self.author)
-        self.PROFILE_FOLLOW_URL = reverse('posts:profile_follow',
-                                          args=[self.author.username])
-        self.PROFILE_UNFOLLOW_URL = reverse('posts:profile_unfollow',
-                                            args=[self.author.username])
-
     def test_main_context(self):
         """Test Context."""
         paths = [
             HOME_URL,
             self.POST_URL,
-            PROFILE_URL,
-            GROUP_URL
+            PROFILE_URL2,
+            GROUP_URL,
+            FOLLOW_INDEX_URL,
         ]
         for address in paths:
             with self.subTest(address=address):
@@ -101,6 +116,8 @@ class PostsPagesTests(TestCase):
                 self.assertEqual(post.author, self.post.author)
                 self.assertEqual(post.group, self.post.group)
                 self.assertEqual(post.text, self.post.text)
+                self.assertEqual(post.image.name,
+                                 f'{settings.POST_UPLOAD}/{uploaded.name}')
 
     def test_paginator_on_pages(self):
         """Тест работы пагинатора на страницах."""
@@ -114,6 +131,7 @@ class PostsPagesTests(TestCase):
             HOME_URL,
             GROUP_URL3,
             PROFILE_URL2,
+            FOLLOW_INDEX_URL
         ]
         for page in paginator_urls:
             with self.subTest(page=page):
@@ -142,7 +160,7 @@ class PostsPagesTests(TestCase):
         posts_count = Post.objects.count()
         response = self.authorized_client.get(reverse('posts:index')).content
         Post.objects.create(
-            text=TEXT, author=self.user, group=self.group2
+            text=TEXT, author=self.user
         )
         self.assertEqual(Post.objects.count(), posts_count + 1)
         self.assertEqual(
@@ -151,26 +169,20 @@ class PostsPagesTests(TestCase):
         self.assertNotEqual(
             response, self.authorized_client.get(HOME_URL).content)
 
-    def test_follow_unfollow_auth(self):
+    def test_follow_auth(self):
         follow_count = Follow.objects.count()
-        self.auth_client_not_author.get(self.PROFILE_FOLLOW_URL)
+        self.auth_client_not_author.get(PROFILE_FOLLOW_URL)
         self.assertEqual(Follow.objects.count(), follow_count + 1)
         self.assertTrue(
             Follow.objects.filter(
                 user=self.not_author, author=self.author).exists()
         )
-        self.auth_client_not_author.get(self.PROFILE_UNFOLLOW_URL)
+
+    def test_unfollow_auth(self):
+        follow_count = Follow.objects.count()
+        self.auth_client_not_author.get(PROFILE_UNFOLLOW_URL)
         self.assertEqual(Follow.objects.count(), follow_count)
         self.assertFalse(
             Follow.objects.filter(user=self.not_author,
                                   author=self.author).exists()
         )
-
-    def test_new_post_follow(self):
-        following = User.objects.create(username='following')
-        Follow.objects.create(user=self.user, author=following)
-        post = Post.objects.create(author=following, text=TEXT)
-        response = self.authorized_client.get(reverse('posts:follow_index'))
-        self.assertIn(post, response.context['page_obj'])
-        response = self.auth_client_author.get(reverse('posts:follow_index'))
-        self.assertNotIn(post, response.context['page_obj'])

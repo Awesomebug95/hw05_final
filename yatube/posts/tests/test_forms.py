@@ -145,16 +145,9 @@ class FormTest(TestCase):
         self.assertEqual(post.group.id, form_data['group'])
         self.assertEqual(post.image.name,
                          f'{settings.POST_UPLOAD}/{uploaded.name}')
-    # def test_create_post_with_picture(self):
-    #     self.posts_count = Post.objects.count()
-    #     response = self.authorized_client.get(reverse('posts:index'))
-    #     first_obj = response.context['page_obj'][0]
-    #     self.assertEqual(first_obj.group.title, self.group_1.title)
-    #     self.assertEqual(first_obj.group.slug, self.group_1.slug)
-    #     self.assertEqual(first_obj.group.description, self.group_1.description)
-    #     self.assertTrue(first_obj.image, self.post.image)
 
     def test_leave_comment_auth_user(self):
+        """Тест авторизированный пользователь может оставить коммент."""
         comment_count = Comment.objects.count()
         response = self.authorized_client.post(
             self.COMMENT_URL,
@@ -168,6 +161,7 @@ class FormTest(TestCase):
         self.assertEqual(comment.post, self.post)
 
     def test_leave_comment_guest_user(self):
+        """Тест гость не может оставить коммент."""
         comment_count = Comment.objects.count()
         response = self.guest_client.post(
             self.COMMENT_URL,
@@ -178,6 +172,7 @@ class FormTest(TestCase):
         self.assertRedirects(response, self.COMMENT_REDIRECT_URL)
 
     def test_guest_create_post(self):
+        """Тест Гость не может создать пост."""
         Post.objects.all().delete()
         posts_count = Post.objects.count()
         uploaded = SimpleUploadedFile(
@@ -199,6 +194,7 @@ class FormTest(TestCase):
         self.assertRedirects(response, REDIRECT_CREATE_URL)
 
     def test_guest_edit_post(self):
+        """Тест гость не может редактировать пост."""
         uploaded = SimpleUploadedFile(
             name='small3.gif',
             content=SMALL_GIF,
@@ -221,6 +217,7 @@ class FormTest(TestCase):
         self.assertEqual(self.post.image, self.post.image)
 
     def test_non_author_edit_post(self):
+        """Тест не автор не может редактировать пост."""
         uploaded = SimpleUploadedFile(
             name='small4.gif',
             content=SMALL_GIF,
@@ -241,5 +238,3 @@ class FormTest(TestCase):
         self.assertEqual(self.post.author, self.post.author)
         self.assertEqual(self.post.group.pk, self.post.group.pk)
         self.assertEqual(self.post.image, self.post.image)
-
-

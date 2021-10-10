@@ -5,7 +5,7 @@
 {% cache 20 index_page %}
   <div class="container">
     {% if user.is_authenticated %}
-      {% include 'posts/includes/switcher.html' %}
+      {% include 'posts/includes/switcher.html' with index=True %}
     {% endif %}
     {% for post in page_obj %}
       {% include "posts/includes/card_post.html" %}
