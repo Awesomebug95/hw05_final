@@ -10,7 +10,7 @@
         Всего постов автора: {{ post.author.posts.count }}
       </li>
     </ul>
-    {% include 'posts/includes/post_card.html' with not_group=True %}
+    {% include 'posts/includes/post_card.html' %}
     {% if post.author.id == request.user.id %}
       <a class="btn btn-primary" href="{% url 'posts:post_edit' post.pk %}">Редактировать запись</a>
     {% endif %}

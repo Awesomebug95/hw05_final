@@ -13,6 +13,7 @@ TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 USER = "User"
 USER2 = 'User2'
+COMMENT_TEXT = 'comment text'
 HOME_URL = reverse('posts:index')
 CREATE_POST_URL = reverse("posts:post_create")
 PROFILE_URL = reverse("posts:profile",
@@ -148,17 +149,19 @@ class FormTest(TestCase):
 
     def test_leave_comment_auth_user(self):
         """Тест авторизированный пользователь может оставить коммент."""
+        self.post.comments.all().delete()
         form_data = {
-            'text': self.TEXT,
+            'text': COMMENT_TEXT,
         }
-        self.authorized_client.post(
+        response = self.authorized_client.post(
             self.COMMENT_URL,
             data=form_data,
             follow=True
         )
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(self.post.comments.count(), 1)
         comment = self.post.comments.all()[0]
-        self.assertEqual(comment.post.text, form_data['text'])
+        self.assertEqual(comment.text, form_data['text'])
         self.assertEqual(comment.author, self.user)
         self.assertEqual(comment.post, self.post)
 
@@ -204,9 +207,13 @@ class FormTest(TestCase):
         )
         form_data = {
             'text': self.TEXT_2,
-            'group': self.group_3.id,
+            'group': self.group_3.pk,
             'image': uploaded
         }
+        text = self.post.text
+        group = self.post.group
+        image = self.post.image
+
         clients = [
             self.guest_client,
             self.authorized_client2
@@ -218,8 +225,8 @@ class FormTest(TestCase):
                     data=form_data,
                     follow=True
                 )
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertEqual(self.post.author, self.user)
-        self.assertNotEqual(self.post.text, form_data['text'])
-        self.assertNotEqual(self.post.group.id, form_data['group'])
-        self.assertNotEqual(self.post.image, form_data['image'])
+                self.assertEqual(response.status_code, HTTPStatus.OK)
+                self.assertEqual(self.post.author, self.user)
+                self.assertEqual(self.post.text, text)
+                self.assertEqual(self.post.group, group)
+                self.assertEqual(self.post.image, image)

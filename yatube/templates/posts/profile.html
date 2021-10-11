@@ -24,7 +24,7 @@
       {% endif %}
     {% endif %}
     {% for post in page_obj %}
-      {% include 'posts/includes/post_card.html' with not_group=True %}
+      {% include 'posts/includes/post_card.html' %}
       {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}
     {% include 'posts/includes/paginator.html' %}
