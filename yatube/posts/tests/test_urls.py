@@ -24,16 +24,14 @@ CREATE_URL = reverse('posts:post_create')
 GROUP_URL = reverse('posts:group_list', args=[SLUG])
 PROFILE_URL = reverse('posts:profile', args=[USER])
 BROKEN_PAGE_URL = 'gimmieaburger/please/'
-REDIRECT_CREATE_URL = (reverse('users:login') + '?next=' + CREATE_URL)
 LOGIN_URL = reverse('users:login')
 FOLLOW_INDEX_URL = reverse('posts:follow_index')
-REDIRECT_FOLLOW_INDEX_URL = (LOGIN_URL + '?next=' + FOLLOW_INDEX_URL)
 FOLLOW_PROFILE_URL = reverse('posts:profile_follow', args=[USER])
-REDIRECT_FOLLOW_PROFILE_URL = (reverse('users:login') + '?next='
-                               + FOLLOW_PROFILE_URL)
 UNFOLLOW_PROFILE_URL = reverse('posts:profile_unfollow', args=[USER])
-REDIRECT_UNFOLLOW_PROFILE_URL = (reverse('users:login') + '?next='
-                                 + UNFOLLOW_PROFILE_URL)
+REDIRECT_CREATE_URL = f'{LOGIN_URL}?next={CREATE_URL}'
+REDIRECT_FOLLOW_INDEX_URL = f'{LOGIN_URL}?next={FOLLOW_INDEX_URL}'
+REDIRECT_FOLLOW_PROFILE_URL = f'{LOGIN_URL}?next={FOLLOW_PROFILE_URL}'
+REDIRECT_UNFOLLOW_PROFILE_URL = f'{LOGIN_URL}?next={UNFOLLOW_PROFILE_URL}'
 
 
 class URLTests(TestCase):
@@ -64,9 +62,6 @@ class URLTests(TestCase):
         super().tearDownClass()
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
-    def setUp(self):
-        pass
-
     def test_url_pages(self):
         """Тестируем ответы страниц."""
         cases = [
@@ -86,8 +81,6 @@ class URLTests(TestCase):
             [FOLLOW_PROFILE_URL, self.guest_client, 302],
             [UNFOLLOW_PROFILE_URL, self.authorized_client, 302],
             [UNFOLLOW_PROFILE_URL, self.guest_client, 302],
-            [self.COMMENT_URL, self.authorized_client, 302],
-            [self.COMMENT_URL, self.guest_client, 302],
         ]
         for url, client, code in cases:
             with self.subTest(url=url, client=client, code=code):
@@ -96,20 +89,22 @@ class URLTests(TestCase):
     def test_redirect_pages(self):
         """Тестируем редирект."""
         cases = [
-            [CREATE_URL, True, self.guest_client, REDIRECT_CREATE_URL],
-            [self.EDIT_URL, True, self.authorized_client, HOME_URL],
-            [self.EDIT_URL, True, self.guest_client, self.REDIRECT_EDIT_URL],
+            [CREATE_URL, True, self.guest_client,
+             REDIRECT_CREATE_URL],
+            [self.EDIT_URL, True, self.authorized_client,
+             HOME_URL],
+            [self.EDIT_URL, True, self.guest_client,
+             self.REDIRECT_EDIT_URL],
             [FOLLOW_INDEX_URL, True, self.guest_client,
              REDIRECT_FOLLOW_INDEX_URL],
-            [FOLLOW_PROFILE_URL, True, self.authorized_client, PROFILE_URL],
+            [FOLLOW_PROFILE_URL, True, self.authorized_client,
+             PROFILE_URL],
             [FOLLOW_PROFILE_URL, True, self.guest_client,
              REDIRECT_FOLLOW_PROFILE_URL],
-            [UNFOLLOW_PROFILE_URL, True, self.authorized_client, PROFILE_URL],
+            [UNFOLLOW_PROFILE_URL, True, self.authorized_client,
+             PROFILE_URL],
             [UNFOLLOW_PROFILE_URL, True, self.guest_client,
              REDIRECT_UNFOLLOW_PROFILE_URL],
-            [self.COMMENT_URL, True, self.authorized_client, self.POST_URL],
-            [self.COMMENT_URL, True, self.guest_client,
-             self.REDIRECT_COMMENT_URL],
         ]
         for url, follow, client, redirect in cases:
             with self.subTest(url=url, client=client, redirect=redirect):
@@ -118,15 +113,22 @@ class URLTests(TestCase):
     def test_template_pages(self):
         """Тестируем шаблоны"""
         cases = [
-            [HOME_URL, self.guest_client, 'posts/index.html'],
-            [GROUP_URL, self.guest_client, 'posts/group_list.html'],
-            [PROFILE_URL, self.guest_client, 'posts/profile.html'],
-            [self.POST_URL, self.guest_client, 'posts/post_detail.html'],
+            [HOME_URL, self.guest_client,
+             'posts/index.html'],
+            [GROUP_URL, self.guest_client,
+             'posts/group_list.html'],
+            [PROFILE_URL, self.guest_client,
+             'posts/profile.html'],
+            [self.POST_URL, self.guest_client,
+             'posts/post_detail.html'],
             [self.EDIT_URL, self.authorized_client_2,
              'posts/create_post.html'],
-            [CREATE_URL, self.authorized_client, 'posts/create_post.html'],
-            [BROKEN_PAGE_URL, self.guest_client, 'core/404.html'],
-            [FOLLOW_INDEX_URL, self.authorized_client, 'posts/follow.html']
+            [CREATE_URL, self.authorized_client,
+             'posts/create_post.html'],
+            [BROKEN_PAGE_URL, self.guest_client,
+             'core/404.html'],
+            [FOLLOW_INDEX_URL, self.authorized_client,
+             'posts/follow.html']
         ]
         for url, client, template in cases:
             with self.subTest(url=url, client=client):

@@ -18,7 +18,7 @@ CREATE_POST_URL = reverse("posts:post_create")
 PROFILE_URL = reverse("posts:profile",
                       kwargs={"username": USER})
 LOGIN_URL = reverse("users:login")
-REDIRECT_CREATE_URL = (LOGIN_URL + '?next=' + CREATE_POST_URL)
+REDIRECT_CREATE_URL = f'{LOGIN_URL}?next={CREATE_POST_URL}'
 
 SMALL_GIF = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
              b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -76,8 +76,8 @@ class FormTest(TestCase):
                                kwargs={"post_id": cls.post.id})
         cls.COMMENT_URL = reverse("posts:add_comment",
                                   kwargs={"post_id": cls.post.pk})
-        cls.COMMENT_REDIRECT_URL = (LOGIN_URL + '?next=' + cls.COMMENT_URL)
-        cls.EDIT_REDIRECT_URL = (LOGIN_URL + '?next=' + cls.EDIT_URL)
+        cls.COMMENT_REDIRECT_URL = f'{LOGIN_URL}?next={cls.COMMENT_URL}'
+        cls.EDIT_REDIRECT_URL = f'{LOGIN_URL}?next={cls.EDIT_URL}'
 
     @classmethod
     def tearDownClass(cls):
@@ -148,16 +148,18 @@ class FormTest(TestCase):
 
     def test_leave_comment_auth_user(self):
         """Тест авторизированный пользователь может оставить коммент."""
-        comment_count = Comment.objects.count()
-        response = self.authorized_client.post(
+        form_data = {
+            'text': self.TEXT,
+        }
+        self.authorized_client.post(
             self.COMMENT_URL,
-            data={'text': self.TEXT},
+            data=form_data,
             follow=True
         )
-        comment = response.context['comments'][0]
-        self.assertEqual(Comment.objects.count(), comment_count + 1)
-        self.assertEqual(comment.post.text, self.TEXT)
-        self.assertEqual(comment.author.username, self.user.username)
+        self.assertEqual(self.post.comments.count(), 1)
+        comment = self.post.comments.all()[0]
+        self.assertEqual(comment.post.text, form_data['text'])
+        self.assertEqual(comment.author, self.user)
         self.assertEqual(comment.post, self.post)
 
     def test_leave_comment_guest_user(self):
@@ -193,7 +195,7 @@ class FormTest(TestCase):
         self.assertEqual(Post.objects.count(), posts_count)
         self.assertRedirects(response, REDIRECT_CREATE_URL)
 
-    def test_guest_edit_post(self):
+    def test_guest_or_no_author_edit_post(self):
         """Тест гость не может редактировать пост."""
         uploaded = SimpleUploadedFile(
             name='small3.gif',
@@ -205,36 +207,19 @@ class FormTest(TestCase):
             'group': self.group_3.id,
             'image': uploaded
         }
-        response = self.guest_client.post(
-            self.EDIT_URL,
-            data=form_data,
-            follow=True
-        )
-        self.assertRedirects(response, self.EDIT_REDIRECT_URL)
-        self.assertEqual(self.post.text, self.post.text)
-        self.assertEqual(self.post.author, self.post.author)
-        self.assertEqual(self.post.group.pk, self.post.group.pk)
-        self.assertEqual(self.post.image, self.post.image)
-
-    def test_non_author_edit_post(self):
-        """Тест не автор не может редактировать пост."""
-        uploaded = SimpleUploadedFile(
-            name='small4.gif',
-            content=SMALL_GIF,
-            content_type='image/gif'
-        )
-        form_data = {
-            'text': self.TEXT_3,
-            'group': self.group_3.id,
-            'image': uploaded
-        }
-        response = self.authorized_client2.post(
-            self.EDIT_URL,
-            data=form_data,
-            follow=True
-        )
-        self.assertRedirects(response, HOME_URL)
-        self.assertEqual(self.post.text, self.post.text)
-        self.assertEqual(self.post.author, self.post.author)
-        self.assertEqual(self.post.group.pk, self.post.group.pk)
-        self.assertEqual(self.post.image, self.post.image)
+        clients = [
+            self.guest_client,
+            self.authorized_client2
+        ]
+        for client in clients:
+            with self.subTest(client=client):
+                response = self.client.post(
+                    self.EDIT_URL,
+                    data=form_data,
+                    follow=True
+                )
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(self.post.author, self.user)
+        self.assertNotEqual(self.post.text, form_data['text'])
+        self.assertNotEqual(self.post.group.id, form_data['group'])
+        self.assertNotEqual(self.post.image, form_data['image'])

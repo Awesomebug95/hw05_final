@@ -37,7 +37,7 @@ PROFILE_URL2 = reverse('posts:profile', args=[USERNAME2])
 PROFILE_FOLLOW_URL = reverse('posts:profile_follow',
                              args=[USERNAME3])
 PROFILE_UNFOLLOW_URL = reverse('posts:profile_unfollow',
-                               args=[USERNAME3])
+                               args=[USERNAME2])
 
 SMALL_GIF = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
              b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -45,11 +45,6 @@ SMALL_GIF = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
              b'\x00\x00\x00\x2C\x00\x00\x00\x00'
              b'\x02\x00\x01\x00\x00\x02\x02\x0C'
              b'\x0A\x00\x3B')
-uploaded = SimpleUploadedFile(
-    name='small.gif',
-    content=SMALL_GIF,
-    content_type='image/gif'
-)
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
@@ -82,11 +77,16 @@ class PostsPagesTests(TestCase):
         cls.auth_client_not_author.force_login(cls.not_author)
         cls.auth_client_author = Client()
         cls.auth_client_author.force_login(cls.author)
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=SMALL_GIF,
+            content_type='image/gif'
+        )
         cls.post = Post.objects.create(
             author=cls.user2,
             group=cls.group,
             text=TEXT,
-            image=uploaded,
+            image=cls.uploaded,
         )
         Follow.objects.create(user=cls.user, author=cls.user2)
         cls.POST_URL = reverse('posts:post_detail', args=[cls.post.pk])
@@ -116,8 +116,7 @@ class PostsPagesTests(TestCase):
                 self.assertEqual(post.author, self.post.author)
                 self.assertEqual(post.group, self.post.group)
                 self.assertEqual(post.text, self.post.text)
-                self.assertEqual(post.image.name,
-                                 f'{settings.POST_UPLOAD}/{uploaded.name}')
+                self.assertEqual(post.image, self.post.image)
 
     def test_paginator_on_pages(self):
         """Тест работы пагинатора на страницах."""
@@ -158,7 +157,7 @@ class PostsPagesTests(TestCase):
 
     def test_cache(self):
         posts_count = Post.objects.count()
-        response = self.authorized_client.get(reverse('posts:index')).content
+        response = self.authorized_client.get(HOME_URL).content
         Post.objects.create(
             text=TEXT, author=self.user
         )
@@ -180,9 +179,10 @@ class PostsPagesTests(TestCase):
 
     def test_unfollow_auth(self):
         follow_count = Follow.objects.count()
-        self.auth_client_not_author.get(PROFILE_UNFOLLOW_URL)
-        self.assertEqual(Follow.objects.count(), follow_count)
+        self.authorized_client.get(PROFILE_UNFOLLOW_URL)
+        self.assertEqual(Follow.objects.count(), follow_count - 1)
         self.assertFalse(
-            Follow.objects.filter(user=self.not_author,
-                                  author=self.author).exists()
+            Follow.objects.filter(user=self.user,
+                                  author=self.user2).exists()
+
         )

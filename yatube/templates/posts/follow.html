@@ -4,7 +4,7 @@
   <div class="container">
     {% include 'posts/includes/switcher.html' with follow=True %}
     {% for post in page_obj %}
-      {% include "posts/includes/card_post.html" with post=post %}
+      {% include "posts/includes/post_card.html" with not_group=True %}
       {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}
     {% include 'posts/includes/paginator.html' with items=page_obj %}
